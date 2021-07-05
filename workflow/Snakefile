@@ -1,0 +1,41 @@
+import os
+import itertools
+import pandas as pd
+from snakemake.utils import Paramspace
+
+# workflow.yaml as default config file if none provided
+if not config:
+    configfile: "config/config.yaml"
+
+task_id = int(os.environ.get('SLURM_ARRAY_TASK_ID', 0))
+
+logs_dir = config["logs_dir"]
+sims_dir = config["sims_dir"]
+params = config["params"]
+replicates = config["replicates"]
+
+# create all output directories from parameter combinations
+sim_results_pattern = os.path.join(sims_dir, "_".join([key + f'{{{key}}}' for key in params.keys()]) + "/ID{task_id}_R{replicate}")
+sim_results = expand(sim_results_pattern, **{k: v for k, v in params.items()}, task_id=task_id, replicate=range(0, replicates))
+
+rule all:
+    input:
+        sim_results
+
+rule run_simulation:
+    output:
+        directory(sim_results_pattern)
+    params:
+        sim_params=lambda wildcards: {key: wildcards[f"{key}"] for key in params.keys()}
+    script:
+        config["sim_script"]
+
+rule create_maps:
+    input:
+        sim_results_pattern
+    output:
+        os.path.join("results/maps", sim_results_pattern + ".png")
+    threads:
+        1
+    script:
+        config["sim_script"]

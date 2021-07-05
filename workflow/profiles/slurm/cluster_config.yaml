@@ -1,0 +1,15 @@
+__default__:
+    job-name: "{rule}"
+    time: "08:00:00"
+    partition: "c"
+    qos: "c_short"
+    output: "logs/{rule}/%j.{rule}.{wildcards}.out"
+    error: "logs/{rule}/%j.{rule}.{wildcards}.err"
+
+run_simulation:
+    partition: "g"
+    qos: "g_short"
+    constraint: "g3"
+    cpus-per-gpu: 1
+    mem-per-cpu: "8G"
+    gres: "gpu:1"

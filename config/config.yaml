@@ -1,0 +1,18 @@
+name: 'workflow_name'
+logs_dir: 'logs'
+sim_script: 'scripts/simulation_script.py'
+sims_dir: 'results/simulations'
+analyses:
+    dir: 'results/analyses'
+replicates: 5
+params:
+    param1:
+        - 1
+        - 2
+        - 3
+    param2:
+        - 'a'
+        - 'b'
+    param3:
+        - true
+        - false

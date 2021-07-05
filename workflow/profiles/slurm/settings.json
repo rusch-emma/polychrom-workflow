@@ -1,0 +1,6 @@
+{
+    "SBATCH_DEFAULTS": "--output=logs/slurm-%j.out --error=logs/slurm-%j.err",
+    "CLUSTER_NAME": "",
+    "CLUSTER_CONFIG": "cluster_config.yaml",
+    "ADVANCED_ARGUMENT_CONVERSION": "no"
+}
