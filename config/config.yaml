@@ -16,3 +16,35 @@ params:
     param3:
         - true
         - false
+
+name: 'workflow_name'
+logs_dir: 'logs'
+simulation:
+    script: 'scripts/simulation_script.py'
+    out_dir: 'results/simulations'
+    replicates: 5
+    parameters:
+        param1:
+        - 1
+        - 2
+        - 3
+    param2:
+        - 'a'
+        - 'b'
+    param3:
+        - true
+        - false
+analyses:
+    dir: 'results/analyses'
+    analysis1:
+        script: 'scripts/analysis1_script.py'
+        out_dir: 'results/analyses/analyses1'
+        parameters:
+            param1: 'foo'
+            param2: 'bar'
+    analysis2:
+        script: 'scripts/analysis2_script.py'
+        out_dir: 'results/analyses/analyses2'
+        parameters:
+            param1: 1234
+            param2: false
