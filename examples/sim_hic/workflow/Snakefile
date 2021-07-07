@@ -1,0 +1,56 @@
+import os
+import itertools
+import pandas as pd
+from snakemake.utils import Paramspace
+
+# config/config.yaml as default config file if none provided
+if not config:
+    configfile: "../config/config.yaml"
+
+logs_dir = config["logs_dir"]
+
+""" SIMULATION CONFIG """
+
+sim_config = config["simulation"]
+sims_dir = sim_config["out_dir"]
+sim_params = sim_config["parameters"]
+replicates = sim_config["replicates"]
+
+# create all output directories from parameter combinations
+sim_results_pattern = os.path.join(sims_dir, "_".join([key + f'{{{key}}}' for key in sim_params.keys()])) + "/R{replicate}"
+sim_results = expand(sim_results_pattern, allow_missing=True, replicate=range(0, replicates))
+
+""" ANALYSES CONFIG """
+
+analyses_config = config["analyses"]
+
+map_config = analyses_config["create_maps"]
+maps_dir = map_config["out_dir"]
+map_params = map_config["parameters"]
+
+map_results_pattern = os.path.join(maps_dir, "_".join([key + f'{{{key}}}' for key in sim_params.keys()]) + ".npy")
+map_results = expand(map_results_pattern, **{k: v for k, v in sim_params.items()})
+
+rule all:
+    input:
+        map_results
+
+""" SIMULATION RULES """
+
+rule run_simulation:
+    output:
+        directory(sim_results_pattern)
+    shell:
+        f"python {sim_config['script']} --out_dir {{output}} " + " ".join([f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()])
+
+""" ANALYSES RULES """
+
+rule create_maps:
+    input:
+        sim_results
+    output:
+        map_results_pattern
+    threads:
+        1
+    shell:
+        f"python {map_config['script']} --out_dir {{output}} " + " ".join([f"--{key} {{wildcards.{key}}}" for key in map_params.keys()])
