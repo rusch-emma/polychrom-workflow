@@ -9,11 +9,12 @@ Configure the workflow by modifying `config.yaml`. An example template is provid
 
 The following entries are expected in `config.yaml`:
 
-* `logs`: Directory for storing log files.
-* `sim_script`: Python script for running the Polychrom simulation. See the [Polychrom documentation](https://polychrom.readthedocs.io/en/latest/) for how to set up simulations.
-* `sims_dir`: Directory for storing the simulation result files. Results will be stored here in directories with names generated from a combination of used parameter values and 
-* `replicates`: The number of replicate simulations per parameter combination to run.
-* `params`: A list of parameters with a list of values each. Simulations will be run for each combination of parameter values.
+* `logs_dir`: Directory for storing log files.
+* `simulation`: Contains simulation configuration.
+  * `script`: Python script for running the Polychrom simulation. See the [Polychrom documentation](https://polychrom.readthedocs.io/en/latest/) for how to set up simulations.
+  * `out_dir`: Directory for storing the simulation result files. Results will be stored here in directories with names generated from a combination of used parameter values and 
+  * `replicates`: The number of replicate simulations per parameter combination to run.
+  * `parameters`: A list of parameters with a list of values each. Simulations will be run for each combination of parameter values.
 
 ### Cluster Configuration
 
