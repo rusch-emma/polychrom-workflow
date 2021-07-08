@@ -1,3 +1,0 @@
-rep_e	chain_length	mt_len	int_n	int_r	int_region	gap_p	fix_tel	timesteps
-10	2000	3	0	1.0	100	0	true	100000000
-		30	10			2
