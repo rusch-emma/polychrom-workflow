@@ -1,41 +1,21 @@
 name: 'workflow_name'
 logs_dir: 'logs'
-sim_script: 'scripts/simulation_script.py'
-sims_dir: 'results/simulations'
-analyses:
-    dir: 'results/analyses'
-replicates: 5
-params:
-    param1:
-        - 1
-        - 2
-        - 3
-    param2:
-        - 'a'
-        - 'b'
-    param3:
-        - true
-        - false
-
-name: 'workflow_name'
-logs_dir: 'logs'
 simulation:
     script: 'scripts/simulation_script.py'
     out_dir: 'results/simulations'
     replicates: 5
     parameters:
         param1:
-        - 1
-        - 2
-        - 3
-    param2:
-        - 'a'
-        - 'b'
-    param3:
-        - true
-        - false
+            - 1
+            - 2
+            - 3
+        param2:
+            - 'a'
+            - 'b'
+        param3:
+            - true
+            - false
 analyses:
-    dir: 'results/analyses'
     analysis1:
         script: 'scripts/analysis1_script.py'
         out_dir: 'results/analyses/analyses1'

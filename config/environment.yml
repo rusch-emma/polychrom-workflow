@@ -1,0 +1,5 @@
+channels:
+  - omnia/label/cuda101
+dependencies:
+  - openmm=7.4.2=py37_cuda101_rc_1
+  - polychrom

@@ -16,32 +16,45 @@ sims_dir = sim_config["out_dir"]
 sim_params = sim_config["parameters"]
 replicates = sim_config["replicates"]
 
+# pattern string containing wildcards for simulation parameters
+params_pattern = "_".join([key + f'{{{key}}}' for key in sim_params.keys()])
+
+""" rule: run_simulation """
 # create all output directories from parameter combinations
-sim_results_pattern = os.path.join(sims_dir, "_".join([key + f'{{{key}}}' for key in sim_params.keys()])) + "/R{replicate}"
-sim_results = expand(sim_results_pattern, allow_missing=True, replicate=range(0, replicates))
+sim_pattern = os.path.join(sims_dir, params_pattern) + "/R{replicate}"
+sim_results = expand(sim_pattern, allow_missing=True, replicate=range(0, replicates))
 
 """ ANALYSES CONFIG """
 
 analyses_config = config["analyses"]
 
-map_config = analyses_config["create_maps"]
-maps_dir = map_config["out_dir"]
-map_params = map_config["parameters"]
+""" rule: create_maps """
+create_map_config = analyses_config["create_maps"]
+create_maps_dir = create_map_config["out_dir"]
+create_map_params = create_map_config["parameters"]
 
-map_results_pattern = os.path.join(maps_dir, "_".join([key + f'{{{key}}}' for key in sim_params.keys()]) + ".npy")
-map_results = expand(map_results_pattern, **{k: v for k, v in sim_params.items()})
+create_maps_pattern = os.path.join(create_maps_dir, params_pattern) + ".npy"
+create_maps_results = expand(create_maps_pattern, **{k: v for k, v in sim_params.items()})
+
+""" rule: plot_maps """
+plot_maps_config = analyses_config["plot_maps"]
+plot_maps_dir = plot_maps_config["out_dir"]
+
+plot_maps_pattern = os.path.join(plot_maps_dir, params_pattern) + ".png"
+plot_maps_results = expand(plot_maps_pattern, **{k: v for k, v in sim_params.items()})
 
 rule all:
     input:
-        map_results
+        plot_maps_results
 
 """ SIMULATION RULES """
 
 rule run_simulation:
     output:
-        directory(sim_results_pattern)
+        directory(sim_pattern)
     shell:
-        f"python {sim_config['script']} --out_dir {{output}} " + " ".join([f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()])
+        f"python {sim_config['script']} --out_dir {{output}} "
+            + " ".join([f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()])
 
 """ ANALYSES RULES """
 
@@ -49,8 +62,20 @@ rule create_maps:
     input:
         sim_results
     output:
-        map_results_pattern
+        create_maps_pattern
     threads:
         1
     shell:
-        f"python {map_config['script']} --out_dir {{output}} " + " ".join([f"--{key} {{wildcards.{key}}}" for key in map_params.keys()])
+        f"python {create_map_config['script']} --in_dirs {{input}} --out_dir {{output}}"
+            + " ".join([f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()])
+            + " ".join([f"--{key} {{wildcards.{key}}}" for key in create_map_params.keys()])
+
+rule plot_maps:
+    input:
+        create_maps_results
+    output:
+        plot_maps_pattern
+    threads:
+        1
+    shell:
+        f"python {plot_maps_config['script']} --in_file {{input}} --out_file {{output}} --name {config['name']}"
