@@ -34,7 +34,6 @@ create_maps_dir = create_map_config["out_dir"]
 create_map_params = create_map_config["parameters"]
 
 create_maps_pattern = os.path.join(create_maps_dir, params_pattern) + ".npy"
-create_maps_results = expand(create_maps_pattern, **{k: v for k, v in sim_params.items()})
 
 """ rule: plot_maps """
 plot_maps_config = analyses_config["plot_maps"]
@@ -66,13 +65,15 @@ rule create_maps:
     threads:
         1
     shell:
-        f"python {create_map_config['script']} --in_dirs {{input}} --out_dir {{output}}"
-            + " ".join([f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()])
-            + " ".join([f"--{key} {{wildcards.{key}}}" for key in create_map_params.keys()])
+        " ".join(
+            [f"python {create_map_config['script']} --in_dirs \"{{input}}\" --out_dir {{output}}"]
+            + [f"--{key} {{wildcards.{key}}}" for key in sim_params.keys()]
+            + [f"--{key} {create_map_params[key]}" for key in create_map_params.keys()]
+        )
 
 rule plot_maps:
     input:
-        create_maps_results
+        create_maps_pattern
     output:
         plot_maps_pattern
     threads:

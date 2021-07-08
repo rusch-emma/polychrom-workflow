@@ -267,7 +267,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     )
 
     for _ in range(timesteps // 10_000):
-        sim.do_block(1)
+        sim.do_block(10_000)
         
     sim.print_stats()
 
