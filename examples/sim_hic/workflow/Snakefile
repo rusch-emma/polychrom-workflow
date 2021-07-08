@@ -5,7 +5,7 @@ from snakemake.utils import Paramspace
 
 # config/config.yaml as default config file if none provided
 if not config:
-    configfile: "../config/config.yaml"
+    configfile: "config/config.yaml"
 
 logs_dir = config["logs_dir"]
 
