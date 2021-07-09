@@ -1,6 +1,7 @@
+import os
 import numpy as np
 import pandas as pd
-import fire
+import click
 
 from simtk import openmm
 
@@ -10,12 +11,67 @@ import polychrom.simulation
 import polychrom.forces
 import polychrom.forcekits
 import polychrom.starting_conformations
-from simtk.openmm.openmm import Platform
 import wiggin.starting_mitotic_conformations
 
 
-def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_tel, rep_e, timesteps, gap_p):
-    PLATFORM = 'CUDA'
+@click.command()
+@click.option(
+    '--platform', type=str, default='CUDA',
+    help='The platform for OpenMM computations.'
+)
+@click.option(
+    '--id', 'id_', type=str, default='',
+    help='i.e. process id, job id, task array number, etc.'
+)
+@click.option(
+    '--replicate', type=int, default=0,
+    help='The replicate index.'
+)
+@click.option(
+    '--timesteps', type=int, default=10_000_000,
+    help='The number of timesteps this simulation runs. Must be divisible by 10,000 since data will be stored in block of 10,000 timesteps each.'
+)
+@click.option(
+    '--out_dir', type=click.Path(), default='./',
+    help='The root folder where the results will be stored.'
+)
+@click.option(
+    '--rep_e', type=float, default=1.5,
+    help='The maximal energy of repulsion between particles.'
+)
+@click.option(
+    '--nucleus_r', type=float, default=100.0,
+    help='The radius of the sphere representing the nucleus.'
+)
+@click.option(
+    '--fix_tel', type=bool, default=False,
+    help='Fix telomeres in space.'
+)
+@click.option(
+    '--chain_length', type=int, default=1000,
+    help='The number of particles per chain. Default is 1000.'
+)
+@click.option(
+    '--mt_len', type=int, default=10,
+    help='The length of microtubules in particles. 1 particle ~ 10 nm'
+)
+@click.option(
+    '--int_n', type=int, default=1,
+    help='The number of intertwines per chain. Default is 1.'
+)
+@click.option(
+    '--int_r', type=float, default=1.0,
+    help='The radius of intertwines. Default is 1.0'
+)
+@click.option(
+    '--int_region', type=int,
+    help='The number of particles around the centromere to be intertwined. If left out whole arms will be intertwined.'
+)
+@click.option(
+    '--gap_p', type=int, default=0,
+    help='Introduces additional gap particles between particles which are excluded from non-bonded forces. Used to prevent chains from passing through one another. Default is 0.'
+)
+def run(platform, id_, replicate, timesteps, out_dir, rep_e, nucleus_r, fix_tel, chain_length, mt_len, int_n, int_r, int_region, gap_p):
     NUMBER_CHAINS = 1
     WIGGLE_DISTANCE = 0.05
     COLLISION_RATE = 0.003
@@ -23,12 +79,11 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     CEN_TETHER_R_MIN = 0.2
     CEN_TETHER_R_MAX = 0.25
     BOND_LENGTH = 1.0 / (gap_p + 1)
-    NUCLEUS_R = 100
 
-    assert openmm.Platform_getPlatformByName(PLATFORM)
+    chain_length *= gap_p + 1
 
-    reporter = polychrom.hdf5_format.HDF5Reporter(folder=out_dir, max_data_length=5, overwrite=True)
-
+    assert openmm.Platform_getPlatformByName(platform)
+    
     # create chromosome and microtubule chains
     chrom_number_particles = chain_length * NUMBER_CHAINS
     total_number_particles = chrom_number_particles + mt_len * NUMBER_CHAINS * 2 # two microtubules per chromosome
@@ -39,8 +94,10 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     chrom_chains = list(zip(chroms['start'], chroms['end'], [False] * NUMBER_CHAINS))
     mt_chains = list(zip(mts['start'], mts['end'], [False] * NUMBER_CHAINS * 2))
 
+    reporter = polychrom.hdf5_format.HDF5Reporter(folder=out_dir, max_data_length=5, overwrite=True)
+
     sim = polychrom.simulation.Simulation(
-        platform=PLATFORM, 
+        platform=platform, 
         integrator='variableLangevin',
         error_tol=ERROR_TOLERANCE,
         GPU='0',
@@ -51,17 +108,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
         reporters=[reporter],
     )
 
-    # create chromosome and microtubule chains
-    chrom_number_particles = chain_length * NUMBER_CHAINS
-    total_number_particles = chrom_number_particles + mt_len * NUMBER_CHAINS * 2 # two microtubules per chromosome
-
-    chroms = pd.DataFrame([[i, i + chain_length, (2 * i + chain_length) // 2] for i in range(0, chrom_number_particles, chain_length)], columns=['start', 'end', 'cen'])
-    mts = pd.DataFrame([[i, i + mt_len] for i in range(chrom_number_particles, total_number_particles, mt_len)], columns=['start', 'end'])
-
-    chrom_chains = list(zip(chroms['start'], chroms['end'], [False] * NUMBER_CHAINS))
-    mt_chains = list(zip(mts['start'], mts['end'], [False] * NUMBER_CHAINS * 2))
     # create centromere-microtubule bonds, 2 microtubules per centromere
-
     cen_mt_bonds = []
     for i in range(NUMBER_CHAINS):
         cen = chroms.iloc[i]['cen']
@@ -112,7 +159,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
             particles=select_finite(mts['start'].values),
             invert=True,
             k=5.0,  
-            center=[0, 0, -NUCLEUS_R],
+            center=[0, 0, -nucleus_r],
             name='spherical_exclusion_microtubules',
         )
     )
@@ -124,7 +171,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
             particles=select_finite(mts['start'].values),
             invert=False,
             k=5.0,  
-            center=[0, 0, -NUCLEUS_R],
+            center=[0, 0, -nucleus_r],
             name='spherical_confinement_microtubules',
         )
     )
@@ -132,7 +179,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     sim.add_force(
         polychrom.forces.spherical_confinement(
             sim,
-            r=NUCLEUS_R,
+            r=nucleus_r,
             k=5.0,  # How steep the walls are
             center=[0,0,0],
             name='spherical_confinement_nucleus',
@@ -146,7 +193,7 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     sim.add_force(
         polychrom.forces.spherical_confinement(
             sim,
-            r=NUCLEUS_R - 1,
+            r=nucleus_r - 1,
             particles=all_telomeres,
             invert=True,
             k=5.0,  
@@ -161,19 +208,19 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
     init_mts = []
     for _ in range(len(mts)):
         x = y = z = np.nan
-        while ~(np.linalg.norm([x, y, z]) < NUCLEUS_R):
+        while ~(np.linalg.norm([x, y, z]) < nucleus_r):
             theta, u = polychrom.starting_conformations._random_points_sphere(1).T
             x = (mt_len / 2) * np.sqrt(1.0 - u * u) * np.cos(theta)
             y = (mt_len / 2) * np.sqrt(1.0 - u * u) * np.sin(theta)
-            z = (mt_len / 2) * u - NUCLEUS_R
+            z = (mt_len / 2) * u - nucleus_r
         
         # create microtubule positions, exclude first coordinate to avoid microtubules having same positions
-        init_mts.append(np.linspace([0, 0, -NUCLEUS_R], [*x, *y, *z], num=mt_len + 1)[1:])
+        init_mts.append(np.linspace([0, 0, -nucleus_r], [*x, *y, *z], num=mt_len + 1)[1:])
 
     init_chroms = []
     telomere_positions = []
 
-    constraint = lambda p: np.linalg.norm(p) < NUCLEUS_R
+    constraint = lambda p: np.linalg.norm(p) < nucleus_r
     step_size = BOND_LENGTH # half bond length, double number of particles for gap particles
 
     if not int_region:
@@ -229,9 +276,9 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
         if fix_tel:
             # select random points on the nucleus to tether telomeres to
             theta, u = polychrom.starting_conformations._random_points_sphere(2).T
-            x = NUCLEUS_R * np.sqrt(1.0 - u * u) * np.cos(theta)
-            y = NUCLEUS_R * np.sqrt(1.0 - u * u) * np.sin(theta)
-            z = NUCLEUS_R * u
+            x = nucleus_r * np.sqrt(1.0 - u * u) * np.cos(theta)
+            y = nucleus_r * np.sqrt(1.0 - u * u) * np.sin(theta)
+            z = nucleus_r * u
             telomere_positions.append((x[0], y[0], z[0]))
             telomere_positions.append((x[1], y[1], z[1]))
 
@@ -273,5 +320,6 @@ def run_simulation(out_dir, chain_length, mt_len, int_region, int_r, int_n, fix_
 
     reporter.dump_data()
 
+
 if __name__ == '__main__':
-    fire.Fire(run_simulation)
+    run()

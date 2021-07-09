@@ -4,6 +4,7 @@ simulation:
     script: 'scripts/simulation_script.py'
     out_dir: 'results/simulations'
     replicates: 5
+    parameters_file: 'config/parameters.tsv'
     parameters:
         param1:
             - 1

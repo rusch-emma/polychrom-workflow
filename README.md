@@ -14,7 +14,9 @@ The following entries are expected in `config.yaml`:
   * `script`: Python script for running the Polychrom simulation. See the [Polychrom documentation](https://polychrom.readthedocs.io/en/latest/) for how to set up simulations. Scripts should take all arguments provided by the `parameter` directives in `config.yaml` as CLI arguments. This can be automated, e.g. see [Python Fire](https://github.com/google/python-fire) and `examples` for an example use case.
   * `out_dir`: Directory for storing the simulation result files. Results will be stored here in directories with names generated from a combination of used parameter values and 
   * `replicates`: The number of replicate simulations per parameter combination to run.
-  * `parameters`: A list of parameters with a list of values each. Simulations will be run for each combination of parameter values.
+  * one of:
+    * `parameters`: A list of parameters with a list of values each. Simulations will be run for each combination of parameter values.
+    * `parameters_file`: Path to a tab-separated file containing the parameter space to run simulations for, with rows corresponding to parameter combinations. If provided `parameters` will be ignored.
 
 ### Adding additional rules
 
